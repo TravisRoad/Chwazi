@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:chwazi/shapeRemake.dart';
 import 'package:flutter/material.dart';
 
@@ -37,6 +39,7 @@ class TouchingListener extends StatefulWidget {
 class _TouchingListenerState extends State<TouchingListener>
     with WidgetsBindingObserver {
   Map<int, ShapeRM> map = new Map();
+  Map<int, bool> readyMap = new Map();
   @override
   Widget build(BuildContext context) {
     return Listener(
@@ -47,13 +50,15 @@ class _TouchingListenerState extends State<TouchingListener>
           ),
         ]..addAll(map.values),
       ),
+      // 按下屏幕生成Shape
       onPointerDown: (e) => setState(() {
+        print(e);
         map.addAll({
           e.pointer: ShapeRM(
             pointer: e.pointer,
             left: e.position.dx,
             top: e.position.dy,
-            onAnimationEnd: _removeShape,
+            ondisposed: _removeShape,
             onReady: _ready,
           )
         });
@@ -64,7 +69,7 @@ class _TouchingListenerState extends State<TouchingListener>
           pointer: e.pointer,
           top: e.position.dy,
           left: e.position.dx,
-          onAnimationEnd: _removeShape,
+          ondisposed: _removeShape,
           onReady: _ready,
         );
       }),
@@ -75,11 +80,17 @@ class _TouchingListenerState extends State<TouchingListener>
   }
 
   void _removeShape(int pointer) {
+    readyMap.remove(pointer);
     map.remove(pointer);
   }
 
   void _ready(int pointer) {
-    print("shape $pointer is ready.");
+    readyMap.addAll({pointer: true});
+    print("shape $pointer is ready. ${readyMap.length}");
+    if (readyMap.length >= 2 && map.length == readyMap.length) {
+      _vote();
+      print("vote among ${readyMap.length}");
+    }
   }
 
   @override
@@ -98,8 +109,19 @@ class _TouchingListenerState extends State<TouchingListener>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      setState(() => map.clear());
+      setState(() {
+        map.clear();
+        readyMap.clear();
+      });
     }
     super.didChangeAppLifecycleState(state);
+  }
+
+  void _vote() {
+    var list = map.keys.toList()..shuffle();
+    list.removeAt(0);
+    list.forEach((element) {
+      _removeShape(element);
+    });
   }
 }
