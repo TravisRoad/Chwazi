@@ -1,68 +1,107 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 
 class Shape extends StatefulWidget {
-  Shape({required this.top, required this.left});
+  Shape({required this.pointer, required this.x, required this.y})
+      : color = colors[pointer % colors.length];
 
-  double top;
-  double left;
+  int pointer;
+  double x;
+  double y;
+  Color color;
+  static List<Color> colors = [
+    Colors.red,
+    Colors.orange,
+    Colors.white,
+    Colors.lime
+  ];
 
   @override
-  _MyAnimationState createState() => _MyAnimationState();
+  _ShapeState createState() => new _ShapeState();
 }
 
-class _MyAnimationState extends State<Shape> with TickerProviderStateMixin {
-  late Animation<double> expandingAnimation;
-  // late Animation<double> extraAnimation;
-  // late Animation<double> breathingAnimation;
+class _ShapeState extends State<Shape> with TickerProviderStateMixin {
+  final double maxRadius = 50.0;
+
   late AnimationController expandingController;
-  late AnimationController breathingController;
-  late AnimationController extraController;
+  late Animation<double> animation;
 
   @override
   void initState() {
-    super.initState();
     expandingController = new AnimationController(
-        duration: const Duration(seconds: 3), vsync: this);
-    extraController = new AnimationController(
-        duration: const Duration(seconds: 3), vsync: this);
-    breathingController = new AnimationController(
-        duration: const Duration(seconds: 3), vsync: this);
-    //图片宽高从0变到300
-    expandingAnimation =
-        new Tween(begin: 0.0, end: 300.0).animate(expandingController)
-          ..addListener(() {
-            setState(() => {});
-          });
-    //启动动画(正向执行)
-    expandingController.forward();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return new Center(
-      child: CircleAvatar(
-        radius: expandingAnimation.value,
-        backgroundColor: Colors.blue,
-        child: new Text('X'),
-      ),
+      vsync: this,
+      duration: const Duration(seconds: 1),
     );
+    animation =
+        new Tween(begin: 20.0, end: maxRadius).animate(expandingController)
+          ..addStatusListener((status) {
+            switch (status) {
+              case AnimationStatus.dismissed:
+                // TODO: Handle this case.
+                break;
+              case AnimationStatus.forward:
+                // TODO: Handle this case.
+                break;
+              case AnimationStatus.reverse:
+                // TODO: Handle this case.
+                break;
+              case AnimationStatus.completed:
+                // TODO: Handle this case.
+                break;
+            }
+          });
+    expandingController.forward();
   }
 
   @override
   void dispose() {
     expandingController.dispose();
-    extraController.dispose();
-    breathingController.dispose();
     super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: widget.y - animation.value,
+      left: widget.x - animation.value,
+      child: _Circle(
+        radius: animation.value,
+        color: widget.color,
+        value: animation.value / maxRadius,
+      ),
+    );
   }
 }
 
-void main() {
-  runApp(new MaterialApp(
-    title: 'Shopping App',
-    home: new Shape(
-      top: 1.0,
-      left: 1.0,
-    ),
-  ));
+class _Circle extends StatelessWidget {
+  _Circle({required this.radius, this.color, required this.value});
+  double radius = 1.0;
+  Color? color = Colors.red;
+  double value;
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: radius * 2,
+      height: radius * 2,
+      child: Stack(
+        children: [
+          CircleAvatar(
+            radius: radius - 5.0,
+            backgroundColor: color,
+          ),
+          SizedBox(
+            width: radius * 2,
+            height: radius * 2,
+            child: CircularProgressIndicator(
+              color: color,
+              value: value,
+              backgroundColor: color!.withAlpha(10),
+              strokeWidth: 4.0,
+            ),
+          )
+        ],
+        alignment: Alignment.center,
+      ),
+    );
+  }
 }
