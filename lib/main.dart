@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'shape.dart';
 import 'dart:async';
 import 'eventBus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(new MaterialApp(
@@ -17,7 +18,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
   Map<int, _Pair<Widget, bool>> map = new Map();
-  late Widget floatingMenu;
+  // late Widget floatingMenu;
 
   int targetNum = 1;
   int _status = Status.waiting;
@@ -32,7 +33,6 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
               color: Colors.black,
             ),
             onPointerDown: (event) {
-              print("pointDown: $_status");
               setState(() {
                 switch (_status) {
                   case Status.waiting:
@@ -62,6 +62,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
                           x: event.position.dx,
                           y: event.position.dy,
                           onReady: _ready,
+                          onRemove: _remove,
                           color: ChooseColor.choose(event.pointer),
                         ),
                         last: map[event.pointer]!.last,
@@ -75,17 +76,15 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
               setState(() {
                 switch (_status) {
                   case Status.waiting:
-                    _remove(event.pointer);
+                    removingNotice(event.pointer);
                     break;
                   case Status.voting:
-                    _remove(event.pointer);
+                    removingNotice(event.pointer);
                     _status = Status.waiting;
                     break;
                   case Status.voted:
                     if (map.keys.contains(event.pointer)) {
-                      _status = Status.waiting;
-                      //TODO:调用销毁函数
-                      map.remove(event.pointer);
+                      removingNotice(event.pointer);
                     }
                     break;
                   default:
@@ -94,23 +93,34 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
               });
             },
           )
-        ]
-          ..addAll(map.values.map((e) => e.first))
-          ..add(floatingMenu),
+        ]..addAll(map.values.map((e) => e.first)),
+        // ..add(floatingMenu),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => setState(() => {
-              // floatingMenu = new
-            }), // TODO: 设计选单
+        backgroundColor: Colors.blue,
+        onPressed: () => {
+          setState(() {
+            targetNum = targetNum % 3 + 1;
+            saveTargetNum(targetNum);
+          })
+        }, 
+        
         tooltip: 'optional',
-        child: const Icon(Icons.menu),
+        child: Text(targetNum.toString() + "F"),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.startTop,
     );
   }
 
+  void removingNotice(int pointer) {
+    bus.emit(removeEvent + pointer.toString(), pointer);
+  }
+
   void _remove(int pointer) {
-    map.remove(pointer);
+    setState(() {
+      map.remove(pointer);
+      if (map.isEmpty) _status = Status.waiting;
+    });
   }
 
   late Timer timer;
@@ -121,6 +131,9 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
       _vote();
       this.timer = timer;
     });
+    setState(() {
+      getTargetNum();
+    });
     super.initState();
   }
 
@@ -128,6 +141,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance!.removeObserver(this);
     timer.cancel();
+    saveTargetNum(targetNum);
     super.dispose();
   }
 
@@ -157,6 +171,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
           x: event.position.dx,
           y: event.position.dy,
           onReady: _ready,
+          onRemove: _remove,
           color: ChooseColor.choose(event.pointer),
         ),
         last: false,
@@ -193,7 +208,8 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
           bus.emit("remove", i);
         }
         for (int i = targetNum; i < list.length; i++) {
-          map.remove(list[i]);
+          // removingNotice(list[i]);
+          _remove(list[i]);
           if (list[i] < min) min = list[i];
         }
         _status = Status.voted;
@@ -203,6 +219,14 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
       print(map);
       if (targetNum == 1) bus.emit(list[0]);
     }
+  }
+
+  Future getTargetNum() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    if (sharedPreferences.containsKey("targetNum"))
+      targetNum = sharedPreferences.getInt("targetNum")!;
+    else
+      targetNum = 1;
   }
 }
 
@@ -216,4 +240,10 @@ class _Pair<F, L> {
   _Pair({required this.first, required this.last});
   F first;
   L last;
+}
+
+/// 利用SharedPreferences存储数据
+void saveTargetNum(int value) async {
+  SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+  sharedPreferences.setInt("targetNum", value);
 }

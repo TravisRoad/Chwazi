@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'eventBus.dart';
 
 typedef ReadyCallBack(int pointer, bool isReady);
+typedef RemoveCallBack(int pointer);
 
 class ChooseColor {
   static Color? choose(pointer) => colors[pointer % colors.length];
@@ -25,6 +26,7 @@ class Shape extends StatefulWidget {
     required this.y,
     required this.onReady,
     required this.color,
+    required this.onRemove,
   }) : super(key: ObjectKey(pointer));
 
   int pointer;
@@ -32,13 +34,14 @@ class Shape extends StatefulWidget {
   double y;
   Color? color;
   ReadyCallBack onReady;
+  RemoveCallBack onRemove;
 
   @override
   _ShapeState createState() => new _ShapeState();
 }
 
 class _ShapeState extends State<Shape> with TickerProviderStateMixin {
-  final double _maxRadius = 50.0;
+  final double _maxRadius = 45.0;
   final double _maxBackgroud = 500.0;
 
   late AnimationController expandingController;
@@ -47,31 +50,27 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
   late Animation<double> shrinkingAnimation;
   late AnimationController breathingController;
   late Animation<double> breathingAnimation;
-  late AnimationController rotateController;
 
   late bool _isVoted;
-  late double shrinkingVal;
 
   @override
   void initState() {
-    print('${this} init ${widget.pointer}');
-    shrinkingVal = 1.0;
     _isVoted = false;
     expandingController = new AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 300),
     );
     expandingAnimation =
-        new Tween(begin: 20.0, end: _maxRadius).animate(expandingController)
+        new Tween(begin: 0.0, end: _maxRadius).animate(expandingController)
           ..addListener(() => setState(() => {}))
           ..addStatusListener((status) {
             switch (status) {
               case AnimationStatus.dismissed:
+                widget.onRemove(widget.pointer);
                 break;
               case AnimationStatus.forward:
                 break;
               case AnimationStatus.reverse:
-                widget.onReady(widget.pointer, false);
                 break;
               case AnimationStatus.completed:
                 widget.onReady(widget.pointer, true);
@@ -80,55 +79,49 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
           });
     shrinkingController = new AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 250),
     );
-    shrinkingAnimation = new Tween(begin: _maxBackgroud, end: _maxRadius + 30.0)
+    shrinkingAnimation = new Tween(begin: _maxBackgroud, end: _maxRadius + 50.0)
         .animate(shrinkingController)
-          ..addListener(() => setState(() {
-                shrinkingVal = shrinkingAnimation.value;
-                print(shrinkingVal);
-              }))
+          ..addListener(() => setState(() {}))
           ..addStatusListener((status) {
             switch (status) {
               case AnimationStatus.dismissed:
-                // TODO: Handle this case.
                 break;
               case AnimationStatus.forward:
                 print("gooooooooo!");
                 break;
               case AnimationStatus.reverse:
-                // TODO: Handle this case.
                 break;
               case AnimationStatus.completed:
-                shrinkingVal = _maxRadius + 30.0;
-
                 break;
             }
           });
     breathingController = new AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 550),
     );
-    breathingAnimation = new Tween(begin: 0.95, end: 1.15)
+    breathingAnimation = new Tween(begin: 0.95, end: 1.10)
         .animate(breathingController)
           ..addListener(() => setState(() => {}));
 
-    rotateController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    );
-
     breathingController.repeat(reverse: true);
     expandingController.forward();
-    rotateController.repeat();
 
     bus.on(widget.pointer, _voted); // 订阅，提供回调函数
-    bus.on("remove", _remove); // 订阅，提供回调函数
+    bus.on(removeEvent + widget.pointer.toString(),
+        onRemoveSignalRecv); // 订阅，提供回调函数
   }
 
-  void _remove(pointer) {
-    print("remove!");
-    if (widget.pointer != pointer) {}
+  // 收到即将释放的信号的回调函数
+  void onRemoveSignalRecv(pointer) {
+    print("remove signal recv!");
+    if (widget.pointer == pointer) {
+      expandingController.reverse();
+    }
+    if (_isVoted) {
+      shrinkingController.reverse();
+    }
   }
 
   @override
@@ -136,9 +129,8 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
     expandingController.dispose();
     breathingController.dispose();
     shrinkingController.dispose();
-    rotateController.dispose();
     bus.off(widget.color); // 关闭订阅
-    bus.off("remove"); // 关闭订阅
+    bus.off(removeEvent + widget.pointer.toString()); // 关闭订阅
     super.dispose();
     print("${this} ${widget.pointer} disposed!");
   }
@@ -153,9 +145,9 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
         Mybackground(
           top: widget.y,
           left: widget.x,
-          radius: shrinkingVal,
+          radius: shrinkingAnimation.value,
           color: widget.color,
-          offset: shrinkingVal,
+          offset: shrinkingAnimation.value,
           isVoted: _isVoted,
         ),
         MyCircle(
@@ -210,7 +202,7 @@ class _MyCircleState extends State<MyCircle>
     );
     rotateAnimation = Tween(begin: 0.0, end: 3.0).animate(rotateController)
       ..addListener(() => setState(() => {}));
-    rotateController.forward();
+    rotateController.repeat();
   }
 
   @override
@@ -222,25 +214,25 @@ class _MyCircleState extends State<MyCircle>
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: widget.top,
-      left: widget.left,
+      top: widget.top - 16.0,
+      left: widget.left - 16.0,
       child: Stack(
         alignment: Alignment.center,
         children: [
           CircleAvatar(
-            radius: widget.radius - 14.0,
+            radius: widget.radius,
             backgroundColor: widget.color!.withOpacity(0.70),
           ),
           RotationTransition(
             turns: rotateAnimation,
             child: SizedBox(
-              width: widget.radius * 2,
-              height: widget.radius * 2,
+              width: (widget.radius + 16.0) * 2,
+              height: (widget.radius + 16.0) * 2,
               child: CircularProgressIndicator(
                 color: widget.color,
                 value: widget.value,
                 backgroundColor: widget.color!.withAlpha(128).withOpacity(0.50),
-                strokeWidth: 9.0,
+                strokeWidth: 9.0 * widget.radius / 50.0,
               ),
             ),
           ),
