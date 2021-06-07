@@ -148,15 +148,13 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        setState(() => map.clear());
-        break;
       case AppLifecycleState.inactive:
-        break;
       case AppLifecycleState.paused:
-        setState(() => map.clear());
-        break;
       case AppLifecycleState.detached:
-        setState(() => map.clear());
+        setState(() {
+          map.clear();
+          _status = Status.waiting;
+        });
         break;
     }
     super.didChangeAppLifecycleState(state);
