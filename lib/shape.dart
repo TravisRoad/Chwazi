@@ -58,7 +58,7 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
     _isVoted = false;
     expandingController = new AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 500),
     );
     expandingAnimation =
         new Tween(begin: 0.0, end: _maxRadius).animate(expandingController)
@@ -67,6 +67,7 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
             switch (status) {
               case AnimationStatus.dismissed:
                 widget.onRemove(widget.pointer);
+                print("${widget.pointer} end!");
                 break;
               case AnimationStatus.forward:
                 break;
@@ -137,8 +138,6 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    var _value = expandingAnimation.value * breathingAnimation.value;
-    var _proportion = expandingAnimation.value / _maxRadius;
     // print("_isVoted:${_isVoted}");
     var stack = Stack(
       children: [
@@ -151,11 +150,11 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
           isVoted: _isVoted,
         ),
         MyCircle(
-          top: widget.y - _value,
-          left: widget.x - _value,
-          radius: _value,
+          top: widget.y,
+          left: widget.x,
+          radius: expandingAnimation.value,
           color: widget.color,
-          value: _proportion,
+          factor: breathingAnimation.value,
         ),
       ],
     );
@@ -175,16 +174,16 @@ class MyCircle extends StatefulWidget {
   MyCircle({
     required this.radius,
     required this.color,
-    required this.value,
     required this.top,
     required this.left,
+    required this.factor,
   });
 
   double radius = 1.0;
   Color? color = Colors.red;
-  double value;
   double top;
   double left;
+  double factor;
 
   @override
   _MyCircleState createState() => new _MyCircleState();
@@ -213,26 +212,32 @@ class _MyCircleState extends State<MyCircle>
 
   @override
   Widget build(BuildContext context) {
+    var val = widget.radius * widget.factor;
+    var muli = 2.4;
     return Positioned(
-      top: widget.top - 16.0,
-      left: widget.left - 16.0,
+      top: widget.top - val * muli / 2,
+      left: widget.left - val * muli / 2,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          CircleAvatar(
-            radius: widget.radius,
-            backgroundColor: widget.color!.withOpacity(0.70),
+          SizedBox(
+            width: val * 0.9 * 2,
+            height: val * 0.9 * 2,
+            child: CircleAvatar(
+              // radius: val * 0.9,
+              backgroundColor: widget.color!.withOpacity(0.70),
+            ),
           ),
           RotationTransition(
             turns: rotateAnimation,
             child: SizedBox(
-              width: (widget.radius + 16.0) * 2,
-              height: (widget.radius + 16.0) * 2,
+              width: val * muli,
+              height: val * muli,
               child: CircularProgressIndicator(
                 color: widget.color,
-                value: widget.value,
+                value: widget.radius / 45.0,
                 backgroundColor: widget.color!.withAlpha(128).withOpacity(0.50),
-                strokeWidth: 9.0 * widget.radius / 50.0,
+                strokeWidth: val * muli / 2 - val - 2.0,
               ),
             ),
           ),

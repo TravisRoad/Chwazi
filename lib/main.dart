@@ -20,7 +20,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
   Map<int, _Pair<Widget, bool>> map = new Map();
   // late Widget floatingMenu;
 
-  late int targetNum;
+  late int targetNum = 1;
   int _status = Status.waiting;
 
   @override
