@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'shape.dart';
+import 'dart:async';
 
 void main() {
   runApp(new MaterialApp(
@@ -14,11 +15,10 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
-  Map<int, Widget> map = new Map();
-  List<int> readyList = [];
+  Map<int, _Pair<Widget, bool>> map = new Map();
 
   int targetNum = 1;
-  int _status = Status.wait;
+  int _status = Status.waiting;
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
@@ -29,45 +29,75 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
               color: Colors.black,
             ),
             onPointerDown: (event) {
-              if (_status == Status.wait) {
+              if (_status == Status.waiting) {
                 setState(() {
                   map.addAll({
-                    event.pointer: Shape(
-                      pointer: event.pointer,
-                      x: event.position.dx,
-                      y: event.position.dy,
-                      onReady: _ready,
-                    ),
+                    event.pointer: _Pair(
+                      first: Shape(
+                        pointer: event.pointer,
+                        x: event.position.dx,
+                        y: event.position.dy,
+                        onReady: _ready,
+                      ),
+                      last: false,
+                    )
                   });
                 });
               }
             },
             onPointerMove: (event) {
-              if (_status == Status.wait) {
-                setState(() {
-                  map[event.pointer] = Shape(
-                    pointer: event.pointer,
-                    x: event.position.dx,
-                    y: event.position.dy,
-                    onReady: _ready,
+              setState(() {
+                if (_status == Status.waiting &&
+                    map.keys.contains(event.pointer)) {
+                  map[event.pointer] = _Pair(
+                    first: Shape(
+                      pointer: event.pointer,
+                      x: event.position.dx,
+                      y: event.position.dy,
+                      onReady: _ready,
+                    ),
+                    last: map[event.pointer]!.last,
                   );
-                });
-              }
+                } else if (_status == Status.voting &&
+                    map.keys.contains(event.pointer)) {
+                  map[event.pointer] = _Pair(
+                    first: Shape(
+                      pointer: event.pointer,
+                      x: event.position.dx,
+                      y: event.position.dy,
+                      onReady: _ready,
+                    ),
+                    last: true,
+                  );
+                }
+              });
             },
             onPointerUp: (event) {
-              if (_status == Status.wait) {
-                setState(() {
-                  _remove(event.pointer);
-                });
-              } else if (_status == Status.voted &&
-                  readyList.contains(event.pointer)) {
-                _status = Status.wait;
-                //TODO:调用销毁函数
-                map.remove(event.pointer);
-              }
+              setState(() {
+                switch (_status) {
+                  case Status.waiting:
+                    _remove(event.pointer);
+                    break;
+                  case Status.voting:
+                    _remove(event.pointer);
+                    _status = Status.waiting;
+                    break;
+                  case Status.voted:
+                    if (map.keys.contains(event.pointer)) {
+                      _status = Status.waiting;
+                      //TODO:调用销毁函数
+                      map.remove(event.pointer);
+                    }
+                    break;
+                  default:
+                    break;
+                }
+              });
             },
           )
-        ]..addAll(map.values),
+        ]..addAll(
+            map.values.map((e) => e.first),
+          ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => setState(() => {}), // TODO: 设计选单
@@ -82,46 +112,66 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
     map.remove(pointer);
   }
 
+  late Timer timer;
   @override
   void initState() {
     WidgetsBinding.instance!.addObserver(this);
+    Timer.periodic(period, (timer) {
+      _vote();
+      this.timer = timer;
+    });
     super.initState();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance!.removeObserver(this);
+    timer.cancel();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      map.clear();
-      readyList.clear();
+    switch (state) {
+      case AppLifecycleState.resumed:
+        map.clear();
+        break;
+      case AppLifecycleState.inactive:
+        // TODO: Handle this case.
+        break;
+      case AppLifecycleState.paused:
+        map.clear();
+        break;
+      case AppLifecycleState.detached:
+        // TODO: Handle this case.
+        break;
     }
     super.didChangeAppLifecycleState(state);
   }
 
   void _ready(int pointer, bool isReady) {
-    if (isReady) {
-      readyList.add(pointer);
-    } else {
-      readyList.remove(pointer);
-    }
-    _vote();
+    map[pointer]!.last = isReady;
   }
 
+  final period = const Duration(microseconds: 500);
   //选出
   void _vote() {
-    if (readyList.length > targetNum && readyList.length == map.length) {
-      readyList.shuffle();
-      for (int i = targetNum; i < readyList.length; i++) {
-        map.remove(readyList[i]);
-        readyList.removeAt(i);
-      }
-      // 更改状态，屏蔽事件效果
-      _status = Status.voted;
+    if (_status == Status.waiting &&
+        map.length > targetNum &&
+        !map.values.map((e) => e.last).contains(false)) {
+      _status = Status.voting;
+      // 设定计时器
+      Timer(const Duration(seconds: 1), () {
+        if (_status == Status.voting) {
+          List<int> list = map.keys.toList()..shuffle();
+          setState(() {
+            for (int i = targetNum; i < list.length; i++) {
+              map.remove(list[i]);
+            }
+          });
+          _status = Status.voted;
+        }
+      });
       if (targetNum == 1) {
         //TODO:启动下层的Shrinking动画
       }
@@ -130,6 +180,13 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
 }
 
 class Status {
-  static final int wait = 0;
-  static final int voted = 1;
+  static const int waiting = 0;
+  static const int voting = 1; // 正在投票中，此时可以暂时放弃投票
+  static const int voted = 2;
+}
+
+class _Pair<F, L> {
+  _Pair({required this.first, required this.last});
+  F first;
+  L last;
 }

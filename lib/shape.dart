@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
 
 typedef readyCallBack(int pointer, bool isReady);
 
@@ -23,6 +22,9 @@ class Shape extends StatefulWidget {
     Colors.lime,
     Colors.blue,
     Colors.cyan,
+    Colors.purple,
+    Colors.greenAccent,
+    Colors.green,
   ];
 
   @override
