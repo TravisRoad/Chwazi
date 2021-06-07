@@ -17,6 +17,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
   Map<int, _Pair<Widget, bool>> map = new Map();
+  late Widget floatingMenu;
 
   int targetNum = 1;
   int _status = Status.waiting;
@@ -93,10 +94,14 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
               });
             },
           )
-        ]..addAll(map.values.map((e) => e.first)),
+        ]
+          ..addAll(map.values.map((e) => e.first))
+          ..add(floatingMenu),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => setState(() => {}), // TODO: 设计选单
+        onPressed: () => setState(() => {
+              // floatingMenu = new
+            }), // TODO: 设计选单
         tooltip: 'optional',
         child: const Icon(Icons.menu),
       ),
@@ -130,16 +135,15 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        map.clear();
+        setState(() => map.clear());
         break;
       case AppLifecycleState.inactive:
-        // TODO: Handle this case.
         break;
       case AppLifecycleState.paused:
-        map.clear();
+        setState(() => map.clear());
         break;
       case AppLifecycleState.detached:
-        // TODO: Handle this case.
+        setState(() => map.clear());
         break;
     }
     super.didChangeAppLifecycleState(state);
@@ -197,7 +201,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
       print("voted...${map.keys.toList()[0]}");
       print(list);
       print(map);
-      if (targetNum == 1) bus.emit(topic0);
+      if (targetNum == 1) bus.emit(list[0]);
     }
   }
 }

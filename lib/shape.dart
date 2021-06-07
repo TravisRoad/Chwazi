@@ -47,6 +47,7 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
   late Animation<double> shrinkingAnimation;
   late AnimationController breathingController;
   late Animation<double> breathingAnimation;
+  late AnimationController rotateController;
 
   late bool _isVoted;
   late double shrinkingVal;
@@ -58,7 +59,7 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
     _isVoted = false;
     expandingController = new AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1000),
     );
     expandingAnimation =
         new Tween(begin: 20.0, end: _maxRadius).animate(expandingController)
@@ -112,10 +113,16 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
         .animate(breathingController)
           ..addListener(() => setState(() => {}));
 
+    rotateController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+
     breathingController.repeat(reverse: true);
     expandingController.forward();
+    rotateController.repeat();
 
-    bus.on(topic0, _voted); // 订阅，提供回调函数
+    bus.on(widget.pointer, _voted); // 订阅，提供回调函数
     bus.on("remove", _remove); // 订阅，提供回调函数
   }
 
@@ -129,7 +136,8 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
     expandingController.dispose();
     breathingController.dispose();
     shrinkingController.dispose();
-    bus.off(topic0); // 关闭订阅
+    rotateController.dispose();
+    bus.off(widget.color); // 关闭订阅
     bus.off("remove"); // 关闭订阅
     super.dispose();
     print("${this} ${widget.pointer} disposed!");
@@ -140,7 +148,7 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
     var _value = expandingAnimation.value * breathingAnimation.value;
     var _proportion = expandingAnimation.value / _maxRadius;
     // print("_isVoted:${_isVoted}");
-    return Stack(
+    var stack = Stack(
       children: [
         Mybackground(
           top: widget.y,
@@ -159,6 +167,7 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
         ),
       ],
     );
+    return stack;
   }
 
   // 被选中时提供回调方法
@@ -189,13 +198,29 @@ class MyCircle extends StatefulWidget {
   _MyCircleState createState() => new _MyCircleState();
 }
 
-class _MyCircleState extends State<MyCircle> {
+class _MyCircleState extends State<MyCircle>
+    with SingleTickerProviderStateMixin {
+  late AnimationController rotateController;
+  late Animation<double> rotateAnimation;
+  @override
+  void initState() {
+    rotateController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 5000),
+    );
+    rotateAnimation = Tween(begin: 0.0, end: 3.0).animate(rotateController)
+      ..addListener(() => setState(() => {}));
+    rotateController.forward();
+  }
+
+  @override
+  void dispose() {
+    rotateController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    // return SizedBox(
-    //   width: radius * 2,
-    //   height: radius * 2,
-    //   child:
     return Positioned(
       top: widget.top,
       left: widget.left,
@@ -203,19 +228,22 @@ class _MyCircleState extends State<MyCircle> {
         alignment: Alignment.center,
         children: [
           CircleAvatar(
-            radius: widget.radius - 10.0,
+            radius: widget.radius - 14.0,
             backgroundColor: widget.color!.withOpacity(0.70),
           ),
-          SizedBox(
-            width: widget.radius * 2,
-            height: widget.radius * 2,
-            child: CircularProgressIndicator(
-              color: widget.color,
-              value: widget.value,
-              backgroundColor: widget.color!.withAlpha(128).withOpacity(0.50),
-              strokeWidth: 6.0,
+          RotationTransition(
+            turns: rotateAnimation,
+            child: SizedBox(
+              width: widget.radius * 2,
+              height: widget.radius * 2,
+              child: CircularProgressIndicator(
+                color: widget.color,
+                value: widget.value,
+                backgroundColor: widget.color!.withAlpha(128).withOpacity(0.50),
+                strokeWidth: 9.0,
+              ),
             ),
-          )
+          ),
         ],
       ),
     );
