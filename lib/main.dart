@@ -20,7 +20,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
   Map<int, _Pair<Widget, bool>> map = new Map();
   // late Widget floatingMenu;
 
-  int targetNum = 1;
+  late int targetNum;
   int _status = Status.waiting;
 
   @override
@@ -103,8 +103,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
             targetNum = targetNum % 3 + 1;
             saveTargetNum(targetNum);
           })
-        }, 
-        
+        },
         tooltip: 'optional',
         child: Text(targetNum.toString() + "F"),
       ),
@@ -209,7 +208,10 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
         }
         for (int i = targetNum; i < list.length; i++) {
           // removingNotice(list[i]);
-          _remove(list[i]);
+          if (targetNum == 1)
+            _remove(list[i]);
+          else
+            removingNotice(list[i]);
           if (list[i] < min) min = list[i];
         }
         _status = Status.voted;
@@ -223,10 +225,12 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
 
   Future getTargetNum() async {
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-    if (sharedPreferences.containsKey("targetNum"))
-      targetNum = sharedPreferences.getInt("targetNum")!;
-    else
-      targetNum = 1;
+    setState(() {
+      if (sharedPreferences.containsKey("targetNum"))
+        targetNum = sharedPreferences.getInt("targetNum")!;
+      else
+        targetNum = 1;
+    });
   }
 }
 
