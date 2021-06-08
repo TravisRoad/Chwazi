@@ -3,6 +3,7 @@ import 'shape.dart';
 import 'dart:async';
 import 'eventBus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'util.dart';
 
 void main() {
   runApp(new MaterialApp(
@@ -17,7 +18,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
-  Map<int, _Pair<Shape, bool>> map = new Map();
+  Map<int, Pair<Shape, bool>> map = new Map();
   // late Widget floatingMenu;
 
   late int targetNum = 1;
@@ -33,67 +34,19 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
               color: Colors.black,
             ),
             onPointerDown: (event) {
-              print("spec:${event.pointer} down status->$_status");
               setState(() {
-                switch (_status) {
-                  case Status.waiting:
-                    _addShape(event);
-                    break;
-                  case Status.voting:
-                    _addShape(event);
-                    _status = Status.waiting;
-                    break;
-                  case Status.voted:
-                  default:
-                    break;
-                }
+                _onPointerDown(event);
               });
             },
             onPointerMove: (event) {
               setState(() {
-                switch (_status) {
-                  case Status.waiting:
-                  case Status.voting:
-                  case Status.voted:
-                  default:
-                    if (map.keys.contains(event.pointer)) {
-                      var _x = map[event.pointer]!.first.x;
-                      var _y = map[event.pointer]!.first.y;
-                      map[event.pointer] = _Pair(
-                        first: Shape(
-                          pointer: event.pointer,
-                          x: _x + event.delta.dx,
-                          y: _y + event.delta.dy,
-                          onReady: _ready,
-                          onRemove: _remove,
-                          color: ChooseColor.choose(event.pointer),
-                        ),
-                        last: map[event.pointer]!.last,
-                      );
-                    }
-                    break;
-                }
+                _onPointerMove(event);
               });
             },
             onPointerUp: (event) {
               print("spec:${event.pointer} up status->$_status");
               setState(() {
-                switch (_status) {
-                  case Status.waiting:
-                    removingNotice(event.pointer);
-                    break;
-                  case Status.voting:
-                    removingNotice(event.pointer);
-                    _status = Status.waiting;
-                    break;
-                  case Status.voted:
-                    if (map.keys.contains(event.pointer)) {
-                      removingNotice(event.pointer);
-                    }
-                    break;
-                  default:
-                    break;
-                }
+                _onPointerUp(event);
               });
             },
           )
@@ -108,7 +61,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
             saveTargetNum(targetNum);
           })
         },
-        tooltip: 'optional',
+        tooltip: 'change target',
         child: Text(targetNum.toString() + "F"),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.startTop,
@@ -138,7 +91,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
       this.timer = timer;
     });
     setState(() {
-      getTargetNum();
+      _getTargetNum();
     });
     super.initState();
   }
@@ -169,7 +122,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
 
   void _addShape(PointerEvent event) {
     map.addAll({
-      event.pointer: _Pair(
+      event.pointer: Pair(
         first: Shape(
           pointer: event.pointer,
           x: event.position.dx,
@@ -228,7 +181,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
-  Future getTargetNum() async {
+  Future _getTargetNum() async {
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
     setState(() {
       if (sharedPreferences.containsKey("targetNum"))
@@ -237,22 +190,70 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
         targetNum = 1;
     });
   }
-}
 
-class Status {
-  static const int waiting = 0;
-  static const int voting = 1; // 正在投票中，此时可以暂时放弃投票
-  static const int voted = 2;
-}
+  /// 利用SharedPreferences存储数据
+  void saveTargetNum(int value) async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    sharedPreferences.setInt("targetNum", value);
+  }
 
-class _Pair<F, L> {
-  _Pair({required this.first, required this.last});
-  F first;
-  L last;
-}
+  void _onPointerMove(PointerMoveEvent event) {
+    switch (_status) {
+      case Status.waiting:
+      case Status.voting:
+      case Status.voted:
+      default:
+        if (map.keys.contains(event.pointer)) {
+          var _x = map[event.pointer]!.first.x;
+          var _y = map[event.pointer]!.first.y;
+          map[event.pointer] = Pair(
+            first: Shape(
+              pointer: event.pointer,
+              x: _x + event.delta.dx,
+              y: _y + event.delta.dy,
+              onReady: _ready,
+              onRemove: _remove,
+              color: ChooseColor.choose(event.pointer),
+            ),
+            last: map[event.pointer]!.last,
+          );
+        }
+        break;
+    }
+  }
 
-/// 利用SharedPreferences存储数据
-void saveTargetNum(int value) async {
-  SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-  sharedPreferences.setInt("targetNum", value);
+  void _onPointerDown(PointerDownEvent event) {
+    switch (_status) {
+      case Status.waiting:
+        _addShape(event);
+        break;
+      case Status.voting:
+        _addShape(event);
+        _status = Status.waiting;
+        break;
+      case Status.voted:
+      default:
+        break;
+    }
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    switch (_status) {
+      case Status.waiting:
+        removingNotice(event.pointer);
+        break;
+      case Status.voting:
+        removingNotice(event.pointer);
+        _status = Status.waiting;
+        break;
+      case Status.voted:
+        if (map.keys.contains(event.pointer)) {
+          removingNotice(event.pointer);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
 }
