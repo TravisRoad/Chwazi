@@ -120,7 +120,7 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
     if (widget.pointer == pointer) {
       expandingController.reverse();
     }
-    if (_isVoted) {
+    if (_isVoted && widget.pointer == pointer) {
       shrinkingController.reverse();
     }
   }

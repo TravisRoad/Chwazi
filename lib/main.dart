@@ -17,7 +17,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
-  Map<int, _Pair<Widget, bool>> map = new Map();
+  Map<int, _Pair<Shape, bool>> map = new Map();
   // late Widget floatingMenu;
 
   late int targetNum = 1;
@@ -33,6 +33,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
               color: Colors.black,
             ),
             onPointerDown: (event) {
+              print("spec:${event.pointer} down status->$_status");
               setState(() {
                 switch (_status) {
                   case Status.waiting:
@@ -56,11 +57,13 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
                   case Status.voted:
                   default:
                     if (map.keys.contains(event.pointer)) {
+                      var _x = map[event.pointer]!.first.x;
+                      var _y = map[event.pointer]!.first.y;
                       map[event.pointer] = _Pair(
                         first: Shape(
                           pointer: event.pointer,
-                          x: event.position.dx,
-                          y: event.position.dy,
+                          x: _x + event.delta.dx,
+                          y: _y + event.delta.dy,
                           onReady: _ready,
                           onRemove: _remove,
                           color: ChooseColor.choose(event.pointer),
@@ -73,6 +76,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
               });
             },
             onPointerUp: (event) {
+              print("spec:${event.pointer} up status->$_status");
               setState(() {
                 switch (_status) {
                   case Status.waiting:
@@ -112,7 +116,10 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
   }
 
   void removingNotice(int pointer) {
-    bus.emit(removeEvent + pointer.toString(), pointer);
+    print("removingNotice $pointer!");
+    // 增加延时，防止订阅者无法接收到事件
+    Timer(const Duration(milliseconds: 20),
+        () => bus.emit(removeEvent + pointer.toString(), pointer));
   }
 
   void _remove(int pointer) {
