@@ -22,3 +22,4 @@ stateDiagram-v2
   voted --> [*]
   ready --> [*]
 ```
+

@@ -80,7 +80,7 @@ class _ShapeState extends State<Shape> with TickerProviderStateMixin {
           });
     shrinkingController = new AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 400),
     );
     shrinkingAnimation = new Tween(begin: _maxBackgroud, end: _maxRadius + 50.0)
         .animate(shrinkingController)
@@ -248,8 +248,6 @@ class _MyCircleState extends State<MyCircle>
 }
 
 class Mybackground extends StatefulWidget {
-  final double maxRadius = 1000.0;
-
   Mybackground({
     required this.radius,
     required this.color,
@@ -272,34 +270,29 @@ class Mybackground extends StatefulWidget {
 }
 
 class _MyBackground extends State<Mybackground> {
+  final double maxRadius = 900.0;
+
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: widget.top - (widget.isVoted ? widget.maxRadius : widget.min),
-      left: widget.left - (widget.isVoted ? widget.maxRadius : widget.min),
+      top: widget.top - (widget.isVoted ? maxRadius : widget.min),
+      left: widget.left - (widget.isVoted ? maxRadius : widget.min),
       child: Stack(
+        clipBehavior: Clip.hardEdge,
         alignment: Alignment.center,
         children: [
           SizedBox(
-            height: widget.isVoted ? widget.maxRadius * 2 : widget.min * 2,
-            width: widget.isVoted ? widget.maxRadius * 2 : widget.min * 2,
-            child: Opacity(
-              opacity: 0.9,
-              child: CircleAvatar(
-                backgroundColor: widget.color,
-                radius: widget.isVoted ? widget.maxRadius : widget.min,
-              ),
+            height: widget.isVoted ? maxRadius * 2 : widget.min * 2,
+            width: widget.isVoted ? maxRadius * 2 : widget.min * 2,
+            child: CircleAvatar(
+              backgroundColor: widget.color,
             ),
           ),
           SizedBox(
             height: widget.isVoted ? widget.radius * 2 : widget.min * 2,
             width: widget.isVoted ? widget.radius * 2 : widget.min * 2,
-            child: Opacity(
-              opacity: 0.9,
-              child: CircleAvatar(
-                backgroundColor: Colors.black,
-                radius: widget.radius,
-              ),
+            child: CircleAvatar(
+              backgroundColor: Colors.black,
             ),
           ),
         ],

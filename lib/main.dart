@@ -255,5 +255,4 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
         break;
     }
   }
-
 }
