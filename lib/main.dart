@@ -4,6 +4,7 @@ import 'dart:async';
 import 'eventBus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'util.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(new MaterialApp(
@@ -21,8 +22,11 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
   Map<int, Pair<Shape, bool>> map = new Map();
   // late Widget floatingMenu;
 
-  late int targetNum = 1;
-  int _status = Status.waiting;
+  int selectNum = 1;
+  int groupNum = 2;
+
+  Status _status = Status.waiting;
+  Mode _mode = Mode.select;
 
   @override
   Widget build(BuildContext context) {
@@ -51,18 +55,37 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
             },
           )
         ]..addAll(map.values.map((e) => e.first)),
-        // ..add(floatingMenu),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.blue,
-        onPressed: () => {
-          setState(() {
-            targetNum = targetNum % 3 + 1;
-            saveTargetNum(targetNum);
-          })
-        },
-        tooltip: 'change target',
-        child: Text(targetNum.toString() + "F"),
+      floatingActionButton: ElevatedButton(
+        style: ButtonStyle(
+          shape: MaterialStateProperty.all(StadiumBorder(
+              side: BorderSide(
+            //设置 界面效果
+            style: BorderStyle.solid,
+          ))),
+        ),
+        onPressed: () => setState(() {
+          if (_mode == Mode.select) {
+            selectNum = selectNum % 3 + 1;
+            saveTargetNum(selectNum);
+          } else {
+            groupNum = 1 + groupNum > 4 ? 2 : groupNum + 1;
+          }
+          HapticFeedback.lightImpact();
+          HapticFeedback.vibrate();
+        }),
+        onLongPress: () => setState(() {
+          if (_mode == Mode.group) {
+            _mode = Mode.select;
+          } else {
+            _mode = Mode.group;
+          }
+          HapticFeedback.lightImpact();
+          HapticFeedback.vibrate();
+        }),
+        child: Text(_mode == Mode.select
+            ? selectNum.toString() + "F"
+            : groupNum.toString() + "G"),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.startTop,
     );
@@ -83,11 +106,12 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
   }
 
   late Timer timer;
+  bool t = false;
   @override
   void initState() {
     WidgetsBinding.instance!.addObserver(this);
     Timer.periodic(period, (timer) {
-      _vote();
+      _onVoting();
       this.timer = timer;
     });
     setState(() {
@@ -100,7 +124,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance!.removeObserver(this);
     timer.cancel();
-    saveTargetNum(targetNum);
+    saveTargetNum(selectNum);
     super.dispose();
   }
 
@@ -142,42 +166,49 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
 
   final period = const Duration(microseconds: 500);
   //选出
-  void _vote() {
+  void _onVoting() {
     if (_status == Status.waiting &&
-        map.length > targetNum &&
+        map.length > selectNum &&
         !map.values.map((e) => e.last).contains(false)) {
       _status = Status.voting;
 
       print("voting...");
       // 设定计时器
-      Timer(const Duration(seconds: 1), () => _voted());
+      Timer(const Duration(seconds: 1), () => _onVoted());
     }
   }
 
   // 投票！
-  void _voted() {
-    if (_status == Status.voting) {
-      List<int> list = map.keys.toList()..shuffle();
-      int min = list[0];
+  void _onVoted() {
+    if (_status != Status.voting) return;
+    List<int> list = map.keys.toList()..shuffle();
+    if (_mode == Mode.select) {
       setState(() {
-        int min = list[0];
-        for (int i = 0; i < targetNum; ++i) {
+        for (int i = 0; i < selectNum; ++i) {
           bus.emit("remove", i);
         }
-        for (int i = targetNum; i < list.length; i++) {
+        for (int i = selectNum; i < list.length; i++) {
           // removingNotice(list[i]);
-          if (targetNum == 1)
+          if (selectNum == 1)
             _remove(list[i]);
           else
             removingNotice(list[i]);
-          if (list[i] < min) min = list[i];
         }
         _status = Status.voted;
       });
       print("voted...${map.keys.toList()[0]}");
       print(list);
       print(map);
-      if (targetNum == 1) bus.emit(list[0]);
+      if (selectNum == 1) bus.emit(list[0]);
+    } else {
+      int i = -1;
+      print(list.toList());
+      list.forEach((element) => {print(map[element]!.first.color.toString())});
+      setState(() => list.forEach((element) =>
+          map[element]!.first.color = map[list[++i % groupNum]]!.first.color));
+      _status = Status.voted;
+      list.forEach((element) => {print(map[element]!.first.color.toString())});
+      print("voted...");
     }
   }
 
@@ -185,9 +216,9 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
     setState(() {
       if (sharedPreferences.containsKey("targetNum"))
-        targetNum = sharedPreferences.getInt("targetNum")!;
+        selectNum = sharedPreferences.getInt("targetNum")!;
       else
-        targetNum = 1;
+        selectNum = 1;
     });
   }
 
@@ -199,9 +230,25 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
 
   void _onPointerMove(PointerMoveEvent event) {
     switch (_status) {
+      case Status.voted:
+        if (map.keys.contains(event.pointer)) {
+          var _x = map[event.pointer]!.first.x;
+          var _y = map[event.pointer]!.first.y;
+          map[event.pointer] = Pair(
+            first: Shape(
+              pointer: event.pointer,
+              x: _x + event.delta.dx,
+              y: _y + event.delta.dy,
+              onReady: _ready,
+              onRemove: _remove,
+              color: map[event.pointer]!.first.color,
+            ),
+            last: map[event.pointer]!.last,
+          );
+        }
+        break;
       case Status.waiting:
       case Status.voting:
-      case Status.voted:
       default:
         if (map.keys.contains(event.pointer)) {
           var _x = map[event.pointer]!.first.x;
@@ -223,6 +270,9 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
   }
 
   void _onPointerDown(PointerDownEvent event) {
+    HapticFeedback.heavyImpact();
+    HapticFeedback.lightImpact();
+
     switch (_status) {
       case Status.waiting:
         _addShape(event);

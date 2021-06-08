@@ -1,7 +1,7 @@
-class Status {
-  static const int waiting = 0;
-  static const int voting = 1; // 正在投票中，此时可以暂时放弃投票
-  static const int voted = 2;
+enum Status {
+  waiting,
+  voting, // 正在投票中，此时可以暂时放弃投票
+  voted,
 }
 
 class Pair<F, L> {
@@ -10,3 +10,7 @@ class Pair<F, L> {
   L last;
 }
 
+enum Mode {
+  group,
+  select,
+}

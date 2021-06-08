@@ -247,7 +247,7 @@ class _MyCircleState extends State<MyCircle>
   }
 }
 
-class Mybackground extends StatefulWidget {
+class Mybackground extends StatelessWidget {
   Mybackground({
     required this.radius,
     required this.color,
@@ -264,33 +264,27 @@ class Mybackground extends StatefulWidget {
   double left;
 
   final double min = 1.0;
-
-  @override
-  _MyBackground createState() => new _MyBackground();
-}
-
-class _MyBackground extends State<Mybackground> {
   final double maxRadius = 900.0;
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: widget.top - (widget.isVoted ? maxRadius : widget.min),
-      left: widget.left - (widget.isVoted ? maxRadius : widget.min),
+      top: top - (isVoted ? maxRadius : min),
+      left: left - (isVoted ? maxRadius : min),
       child: Stack(
         clipBehavior: Clip.hardEdge,
         alignment: Alignment.center,
         children: [
           SizedBox(
-            height: widget.isVoted ? maxRadius * 2 : widget.min * 2,
-            width: widget.isVoted ? maxRadius * 2 : widget.min * 2,
+            height: isVoted ? maxRadius * 2 : min * 2,
+            width: isVoted ? maxRadius * 2 : min * 2,
             child: CircleAvatar(
-              backgroundColor: widget.color,
+              backgroundColor: color,
             ),
           ),
           SizedBox(
-            height: widget.isVoted ? widget.radius * 2 : widget.min * 2,
-            width: widget.isVoted ? widget.radius * 2 : widget.min * 2,
+            height: isVoted ? radius * 2 : min * 2,
+            width: isVoted ? radius * 2 : min * 2,
             child: CircleAvatar(
               backgroundColor: Colors.black,
             ),
