@@ -5,6 +5,7 @@ import 'eventBus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'util.dart';
 import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 void main() {
   runApp(new MaterialApp(
@@ -27,6 +28,8 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
 
   Status _status = Status.waiting;
   Mode _mode = Mode.select;
+
+  late AudioCache audioPlayer;
 
   @override
   Widget build(BuildContext context) {
@@ -117,6 +120,7 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
     setState(() {
       _getTargetNum();
     });
+    audioPlayer = AudioCache();
     super.initState();
   }
 
@@ -273,6 +277,8 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
     HapticFeedback.heavyImpact();
     HapticFeedback.lightImpact();
 
+    playLocal();
+
     switch (_status) {
       case Status.waiting:
         _addShape(event);
@@ -304,5 +310,10 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
       default:
         break;
     }
+  }
+
+  playLocal() async {
+    print("play");
+    await audioPlayer.play("user_1.mp3");
   }
 }
