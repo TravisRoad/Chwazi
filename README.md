@@ -1,16 +1,14 @@
 # chwazi
 
-A new Flutter project.
+## 简介
 
-## Getting Started
+flutter练手项目，代码写的很丑。仿造chwazi写了一下
 
-This project is a starting point for a Flutter application.
+本应用被设计用来处理选择的难题。打开本应用后，多名用户在屏幕上按下手指，经过短暂延时，屏幕上留下1个记号并聚焦，以达到选择的目的。
 
-A few resources to get you started if this is your first Flutter project:
+## 使用
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+1. `git clone` 本项目
+2. 在根目录中运行`flutter run`
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+有其他问题请参考flutter官方文档
