@@ -314,6 +314,6 @@ class _MyAppstate extends State<MyApp> with WidgetsBindingObserver {
 
   playLocal() async {
     print("play");
-    await audioPlayer.play("user_1.mp3");
+    await audioPlayer.play("raw/user_1.mp3");
   }
 }
