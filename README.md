@@ -10,6 +10,9 @@
      <img alt="License" src="https://img.shields.io/github/license/TravisRoad/Chwazi?color=FF0000">
      <img alt="Github forks" src="https://img.shields.io/github/forks/TravisRoad/Chwazi?color=FF00FF" />
     <img alt="Github stars" src="https://img.shields.io/github/stars/TravisRoad/Chwazi?color=FF00FF" />
+    <a href="https://open.vscode.dev/github.com/TravisRoad/Chwazi">
+      <img alt="Open in Visual Studio Code" src="https://open.vscode.dev/badges/open-in-vscode.svg">
+    </a>
 </p>
 
 ---
